@@ -23,36 +23,42 @@ After following the instructions, how many lights are lit?
 #include <stdbool.h>
 #include <unistd.h>
 #include <assert.h>
+// #include <vector>
+#include <set>
+using namespace std;
 #define LIGHT_COUNT 1000
 
 typedef enum kind_e {
   TOGGLE = 0,
   TURN_ON,
-  TURN_OFF
+  TURN_OFF,
+  NONE
 } Kind;
 
 const static char *action_strs[] = {
-  [TOGGLE] = "turn",
-  [TURN_ON] = "turn on",
-  [TURN_OFF] = "turn off",
+  "turn",
+  "turn on",
+  "turn off",
 };
 typedef struct vec2_s {
-  int x, y;
+  int x = 0, y = 0;
 } vec2;
 
 typedef struct instruction_s {
-  Kind kind;
+  Kind kind = NONE;
   vec2 start;
   vec2 end;
 } instruction_t;
 #define MAX_TOKENS 12
-static bool lights[LIGHT_COUNT][LIGHT_COUNT] = {{0}};
+
 void free_split_result(char **res)
 {
   int idx = 0;
   if (res) {
-    while (res[idx])
-      free(res[idx++]);
+    while (res[idx]) {
+      free(res[idx]);
+      idx++;
+    }
     free(res);
   }
 }
@@ -65,7 +71,7 @@ char **split(char *s, const char *delim)
   int vec_idx;
 
   sc  = strdup(s);
-  vec = malloc(sizeof(char *) * MAX_TOKENS);
+  vec = (char **)malloc(sizeof(char *) * MAX_TOKENS);
   vec_idx = 0;
   tok = strtok(sc, delim);
   while (tok) {
@@ -73,6 +79,7 @@ char **split(char *s, const char *delim)
     tok = strtok(NULL, delim);
   }
   vec[vec_idx] = NULL;
+  free(sc);
   return vec;
 }
 
@@ -88,19 +95,17 @@ int main(int argc, char **argv)
     fprintf(stderr, "Could not open `%s` for reading.\n", argv[1]);
     return (1);
   }
-  
-  instruction_t ins = {0};
+   
+  instruction_t ins;
   ssize_t nread = 1;
   size_t n = 0;
   char **tok;
   char **token_vec;
   char **chord_vec;
-
-  char *Line = NULL;
-  int op;
-  
+  char *Line = NULL;  
+  std::set<int> lit_lights_set;
+  static bool lights[LIGHT_COUNT * LIGHT_COUNT] = {0}; 
   while (1) {
-    op = 0;
     nread = getline(&Line, &n, fp);
     if (nread <= 0)
       break;
@@ -142,15 +147,50 @@ int main(int argc, char **argv)
       .x = atoi(chord_vec[0]),
       .y = atoi(chord_vec[1])
     };
-    printf("The parsed action tell me to %s all bulbs from loc (%i, %i) thro (%i, %i)\n", action_strs[ins.kind], 
-        ins.start.x, ins.start.y, ins.end.x, ins.end.y);
-    
+    // printf("The parsed action tell me to %s all bulbs from loc (%i, %i) thro (%i, %i)\n", action_strs[ins.kind], 
+    //     ins.start.x, ins.start.y, ins.end.x, ins.end.y);
     // TODO: Cleanup ur messss..
+    switch (ins.kind) {
+    case TURN_OFF: {
+      // Getting a light using chords
+      // lights[(LIGHT_COUNT * y) + x];
+      // Range: ((LIGHT_COUNT * sy) + sx) -> ((LIGHT_COUNT * ey) + ex)
+      int start = ((LIGHT_COUNT * ins.start.y) + ins.start.x);
+      int end   = ((LIGHT_COUNT * ins.end.y) + ins.end.x);
+      for (int cell = start; cell <= end; ++cell) {
+        lights[cell] = 0;
+      }
+    } break;
+    case TURN_ON: {
+      int start = ((LIGHT_COUNT * ins.start.y) + ins.start.x);
+      int end   = ((LIGHT_COUNT * ins.end.y) + ins.end.x);
+      for (int cell = start; cell <= end; ++cell) {
+        if (!lights[cell])
+          lit_lights_set.insert(cell);
+        lights[cell] = 1;
+
+      }
+    } break;
+    case TOGGLE: {
+      int start = ((LIGHT_COUNT * ins.start.y) + ins.start.x);
+      int end   = ((LIGHT_COUNT * ins.end.y) + ins.end.x);
+      for (int cell = start; cell <= end; ++cell) {
+        lights[cell] = !lights[cell];
+      }
+    } break;
+    default: {} break;
+    }
     free_split_result(chord_vec);
     free_split_result(token_vec);
     free(Line);
     Line = NULL;
   }
-  
+  printf("FINISHED!!\n");
+  size_t turned_on = 0, turned_off = 0; 
+  for (int cell = 0; cell < LIGHT_COUNT * LIGHT_COUNT; cell++) {
+    turned_on += lights[cell];
+    turned_off += !lights[cell];  
+  }
+  printf("Turned off: %zu Turned on: %zu LIT: %ld\n", turned_off, turned_on, lit_lights_set.size());
   return (0);
 }
