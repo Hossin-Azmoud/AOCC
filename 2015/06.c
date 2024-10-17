@@ -22,6 +22,7 @@ After following the instructions, how many lights are lit?
 #include <time.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <assert.h>
 #define LIGHT_COUNT 1000
 
 typedef enum kind_e {
@@ -30,6 +31,11 @@ typedef enum kind_e {
   TURN_OFF
 } Kind;
 
+const static char *action_strs[] = {
+  [TOGGLE] = "turn",
+  [TURN_ON] = "turn on",
+  [TURN_OFF] = "turn off",
+};
 typedef struct vec2_s {
   int x, y;
 } vec2;
@@ -38,9 +44,37 @@ typedef struct instruction_s {
   Kind kind;
   vec2 start;
   vec2 end;
-} instruction_s;
-
+} instruction_t;
+#define MAX_TOKENS 12
 static bool lights[LIGHT_COUNT][LIGHT_COUNT] = {{0}};
+void free_split_result(char **res)
+{
+  int idx = 0;
+  if (res) {
+    while (res[idx])
+      free(res[idx++]);
+    free(res);
+  }
+}
+
+char **split(char *s, const char *delim)
+{
+  char *sc; // string copy
+  char **vec;
+  char *tok;
+  int vec_idx;
+
+  sc  = strdup(s);
+  vec = malloc(sizeof(char *) * MAX_TOKENS);
+  vec_idx = 0;
+  tok = strtok(sc, delim);
+  while (tok) {
+    vec[vec_idx++] = strdup(tok);
+    tok = strtok(NULL, delim);
+  }
+  vec[vec_idx] = NULL;
+  return vec;
+}
 
 int main(int argc, char **argv)
 {
@@ -55,25 +89,68 @@ int main(int argc, char **argv)
     return (1);
   }
   
+  instruction_t ins = {0};
   ssize_t nread = 1;
-  unsigned long nice = 0, bad = 0;
   size_t n = 0;
-  char *tok  = NULL;
+  char **tok;
+  char **token_vec;
+  char **chord_vec;
+
   char *Line = NULL;
+  int op;
   
   while (1) {
+    op = 0;
     nread = getline(&Line, &n, fp);
     if (nread <= 0)
       break;
     Line[nread-1] = 0;
     // TODO: Parse the line into an instruction thingy
-    tok = strtok(Line, " ");
-    while (tok) {
-      tok = strtok(NULL, " ");
+    token_vec = split(Line, " ");
+    tok = token_vec;
+    // TODO: Parse the instruction kind
+    if (strcmp(*tok, "turn") == 0) {
+      tok++;
+      if (strcmp(*tok, "on") == 0)
+        ins.kind = TURN_ON;
+      else if (strcmp(*tok, "off") == 0)
+        ins.kind = TURN_OFF;
+      else {
+        fprintf(stderr, "Expected `on` or `off` but found %s\n", *tok);
+        exit(1);
+      }
+    } else if (strcmp(*tok, "toggle") == 0) {
+       ins.kind = TOGGLE;        
+    } else {
+      fprintf(stderr, "Expected `toggle` or `turn` but found %s\n", *tok);
+      exit(1);
     }
+    tok++;
+    // Where we reached.
+    chord_vec = split(*tok, ",");
+    ins.start = (vec2){
+      .x = atoi(chord_vec[0]),
+      .y = atoi(chord_vec[1])
+    };
+    tok++;
+    assert(strcmp(*tok, "through") == 0 && "Expected a thro here!!");
+    tok++;
+    free_split_result(chord_vec);
+
+    chord_vec = split(*tok, ",");
+    ins.end = (vec2){
+      .x = atoi(chord_vec[0]),
+      .y = atoi(chord_vec[1])
+    };
+    printf("The parsed action tell me to %s all bulbs from loc (%i, %i) thro (%i, %i)\n", action_strs[ins.kind], 
+        ins.start.x, ins.start.y, ins.end.x, ins.end.y);
+    
+    // TODO: Cleanup ur messss..
+    free_split_result(chord_vec);
+    free_split_result(token_vec);
     free(Line);
     Line = NULL;
   }
-  printf("Nice words: %ld Bad words: %ld\n", nice, bad);
+  
   return (0);
 }
