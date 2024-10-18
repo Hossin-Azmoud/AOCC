@@ -4,8 +4,8 @@ from os import scandir, system
 
 CC="gcc"
 CXX="g++"
-# CFLAGS="-Wall -Wextra -pedantic -Werror"
-CFLAGS="-Wno-deprecated"
+# CFLAGS="-Wall -Wextra -pedantic -Werror -ggdb"
+CFLAGS="-Wno-deprecated  -ggdb"
 cpp = 0
 c   = 0
 def main():
@@ -22,6 +22,8 @@ def main():
             lib = ""
             if name == "04.c":
                 lib = "-lm"
+            if name == "07.c":
+                lib = "./hashtable/HashTable.c"
             if cpp:
                 command = f"{CXX} {CFLAGS} -o {out} {name} {lib}"
             else:
