@@ -36,7 +36,9 @@ x: 123
 y: 456
 In little Bobby's kit's instructions booklet (provided as your puzzle input), what signal is ultimately provided to wire a?
 */
+#include <cerrno>
 #include <cstdint>
+#include <cstdlib>
 #include <ctype.h>
 
 #include <map>
@@ -262,6 +264,12 @@ int main(int argc, char **argv)
     ip++;
   }
   
-  execute_operation(ram0, prog["a"], prog);  
+  // Get the signal from a
+  uint16_t val;
+  val = execute_operation(ram0, prog["a"], prog);
+  ram0.clear();
+  ram0["b"] = val;
+  execute_operation(ram0, prog["a"], prog);
+  printf("[a] %u\n", ram0["a"]);
   return (0);
 }
