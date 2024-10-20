@@ -263,5 +263,10 @@ int main(int argc, char **argv)
   }
   
   execute_operation(ram0, prog["a"], prog);  
+  for (auto m = prog.begin();m != prog.end(); m++) {
+    if (m->second.dst) free(m->second.dst);
+    if (m->second.lhs) free(m->second.lhs);
+    if (m->second.rhs) free(m->second.rhs);
+  }
   return (0);
 }
