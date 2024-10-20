@@ -22,6 +22,9 @@ For example:
 To what floor do the instructions take Santa?
 */
 #include <stdio.h>
+#include <stdint.h>
+
+
 
 int main(int argc, char **argv)
 {
@@ -50,3 +53,4 @@ int main(int argc, char **argv)
   }
   printf("Sants is at %ith floor.\n", floor);
 }
+
